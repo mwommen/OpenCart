@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Page</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Stripe.js -->
+    <script src="https://js.stripe.com/v3/"></script>
+    <!-- Link to external JavaScript file -->
+    <script src="{{ url_for('static', filename='script.js') }}" defer></script>
+    <!-- Link to external CSS file (optional) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container my-5">
+        <!-- Logo Section -->
+        <div class="text-center">
+            <img src="{{ url_for('static', filename='images/opencart.png') }}" alt="OpenCart Logo" class="img-fluid mb-4" style="max-width: 200px;">
+        </div>
+
+        <!-- Page Title -->
+        <h1 class="text-center mb-4">Make a Payment</h1>
+        
+        <!-- Login Section -->
+        <div id="login-section" class="text-center mb-4">
+            {% if session['user_email'] %}
+                <p>Welcome, <strong>{{ session['user_email'] }}</strong>!</p>
+                <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+            {% else %}
+                <a href="{{ url_for('login') }}" class="btn btn-primary">Login with Google</a>
+            {% endif %}
+        </div>
+
+        <!-- Payment Form -->
+        <form id="payment-form">
+            <div class="form-group">
+                <label for="card-element">Credit or Debit Card</label>
+                <!-- Stripe Elements will create an input field for card details -->
+                <div id="card-element" class="form-control"></div>
+                <div id="card-errors" role="alert" class="text-danger mt-2"></div>
+            </div>
+    
+            <button id="submit" type="submit" class="btn btn-success btn-block">Pay Now</button>
+        </form>
+        
+        <!-- Success and Error Messages -->
+        <div id="messages" class="mt-4">
+            <div id="success-message" class="alert alert-success d-none">Payment successful!</div>
+            <div id="error-message" class="alert alert-danger d-none">There was an error processing your payment.</div>
+        </div>
+    </div>
+
+    <!-- Footer (optional) -->
+    <footer class="text-center mt-5">
+        <small>&copy; {{ current_year }} OpenCart. All rights reserved.</small>
+    </footer>
+</body>
+</html>
