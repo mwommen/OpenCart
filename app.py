@@ -1,16 +1,17 @@
 import os
-# Allow insecure transport (HTTP) for development
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
-
 from flask import Flask, render_template, redirect, url_for, session, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 import stripe
 from oauthlib.oauth2 import WebApplicationClient
 import requests
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Initialize Flask app and configuration
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "supersecretkey")  # Set default for local testing
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "supersecretkey")  # Default for local testing
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///site.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
@@ -44,21 +45,27 @@ class CartItem(db.Model):
 # Index route (Home page)
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # Fetch products from WooCommerce API
+    API_URL = "https://ecom-superbly-warm-tidalwave.wpcomstaging.com/wp-json/wc/v3/products"
+    CONSUMER_KEY = os.getenv("CONSUMER_KEY")
+    CONSUMER_SECRET = os.getenv("CONSUMER_SECRET")
 
-# Debug route: View session for troubleshooting
-@app.route('/debug')
-def debug():
-    return jsonify({"session_email": session.get('user_email')})
+    response = requests.get(API_URL, auth=(CONSUMER_KEY, CONSUMER_SECRET))
+    products = []
+
+    if response.status_code == 200:
+        products = response.json()  # Get products data
+    else:
+        print(f"Failed to fetch products. HTTP Status Code: {response.status_code}")
+    
+    return render_template('index.html', products=products)
 
 # Login route (Redirects to Google OAuth)
 @app.route('/login')
 def login():
-    # Get Google provider configuration
     google_provider_cfg = requests.get(GOOGLE_DISCOVERY_URL).json()
     authorization_endpoint = google_provider_cfg["authorization_endpoint"]
     
-    # Generate the Google OAuth login URL
     request_uri = client.prepare_request_uri(
         authorization_endpoint,
         redirect_uri="http://127.0.0.1:8000/callback",  # Explicit redirect_uri
@@ -70,10 +77,8 @@ def login():
 @app.route("/callback")
 def callback():
     try:
-        # Get the authorization code from the request URL
         code = request.args.get("code")
         
-        # Fetch the tokens from Google
         google_provider_cfg = requests.get(GOOGLE_DISCOVERY_URL).json()
         token_endpoint = google_provider_cfg["token_endpoint"]
         token_url, headers, body = client.prepare_token_request(
@@ -90,7 +95,6 @@ def callback():
         )
         client.parse_request_body_response(token_response.text)
         
-        # Fetch user info from Google
         userinfo_endpoint = google_provider_cfg["userinfo_endpoint"]
         userinfo_response = requests.get(
             userinfo_endpoint,
@@ -98,32 +102,26 @@ def callback():
         )
         user_info = userinfo_response.json()
         
-        # Store user info in session and redirect to index
         session['user_email'] = user_info.get("email")
         print(f"User logged in: {session['user_email']}")
         return redirect(url_for("index"))
     except Exception as e:
         return jsonify({"error": f"OAuth Callback failed: {str(e)}"}), 500
 
-# Logout route (Clear session and redirect to index)
+# Logout route
 @app.route('/logout')
 def logout():
     session.pop('user_email', None)
     return redirect(url_for('index'))
 
-# Route to retrieve the cart data for a logged-in user
+# Route to retrieve the cart data
 @app.route('/api/cart', methods=['GET'])
 def get_cart():
     user_email = session.get('user_email')
-    print(f"Retrieving cart for user: {user_email}")  # Debugging output
-
     if not user_email:
         return jsonify({"error": "User not logged in"}), 401
 
-    # Fetch the cart from the database
     cart = Cart.query.filter_by(user_email=user_email).first()
-    print(f"Cart found: {cart}")  # Debugging output
-
     if not cart or not cart.items:
         return jsonify({"error": "No cart data found for this user"}), 404
 
@@ -155,14 +153,12 @@ def add_to_cart():
     if not product_name or not quantity or not price:
         return jsonify({"error": "Missing item details"}), 400
 
-    # Find or create the user's cart
     cart = Cart.query.filter_by(user_email=user_email).first()
     if not cart:
         cart = Cart(user_email=user_email)
         db.session.add(cart)
         db.session.commit()
 
-    # Add the item to the cart
     new_item = CartItem(
         product_name=product_name,
         quantity=quantity,
@@ -174,7 +170,7 @@ def add_to_cart():
 
     return jsonify({"message": "Item added successfully"})
 
-# Pay route (Handles Stripe payment intent)
+# Pay route
 @app.route('/pay', methods=['POST'])
 def pay():
     try:
@@ -182,17 +178,14 @@ def pay():
         if not user_email:
             return jsonify({"error": "User not logged in"}), 401
 
-        # Retrieve user's cart
         cart = Cart.query.filter_by(user_email=user_email).first()
         if not cart or not cart.items:
             return jsonify({"error": "No cart items found"}), 404
 
-        # Calculate total amount
         total_amount = sum(item.quantity * item.price for item in cart.items)
 
-        # Create a PaymentIntent
         intent = stripe.PaymentIntent.create(
-            amount=int(total_amount * 100),  # Stripe works with cents
+            amount=int(total_amount * 100),
             currency='usd',
             automatic_payment_methods={'enabled': True},
         )
@@ -202,7 +195,6 @@ def pay():
         return jsonify({"error": str(e)}), 403
 
 if __name__ == "__main__":
-    # Create all tables in the database
     with app.app_context():
         db.create_all()
 

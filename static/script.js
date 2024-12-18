@@ -1,4 +1,4 @@
-// Set your publishable key from Stripe
+// Allow insecure transport (HTTP) for development // Set your publishable key from Stripe
 const stripe = Stripe('pk_test_bljpr6qrPgJiftEYuLKIJuZh00domXNg3A'); // Replace with your actual Stripe publishable key
 
 // Set up elements for handling the payment form
@@ -17,6 +17,7 @@ card.on('change', (event) => {
         errorDisplay.textContent = '';
     }
 });
+
 
 // Fetch cart items
 async function getCartItems() {
@@ -192,6 +193,6 @@ paymentRequest.on('paymentmethod', async (ev) => {
     } catch (error) {
         ev.complete('fail');
         hideLoading();
-        alert('There was an error processing your payment.');
+        alert('Error processing payment.');
     }
 });

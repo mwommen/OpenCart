@@ -63,6 +63,29 @@
             <div id="loading-message" class="alert alert-info d-none"><i class="fas fa-spinner fa-spin"></i> Processing your payment...</div>
         </form>
 
+        <!-- Products Section (New Section) -->
+        <div class="mt-5">
+            <h2 class="text-center">Store 1</h2>
+            <div class="row">
+                {% for product in products %}
+                    <div class="col-md-4">
+                        <div class="card mb-4">
+                            {% if product.images %}
+                                <img src="{{ product.images[0].src }}" class="card-img-top" alt="{{ product.name }}">
+                            {% else %}
+                                <img src="https://via.placeholder.com/150" class="card-img-top" alt="No image available">
+                            {% endif %}
+                            <div class="card-body">
+                                <h5 class="card-title">{{ product.name }}</h5>
+                                <p class="card-text">${{ product.price }}</p>
+                                <a href="{{ product.permalink }}" class="btn btn-primary" target="_blank">View Product</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
         <!-- Payment Request Button -->
         <div id="payment-request-button" style="display:none;"></div>
 
