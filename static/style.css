@@ -99,3 +99,29 @@ button:hover {
 .hidden {
     display: none;
 }
+
+
+
+/* Custom Styles */
+body {
+    background: #f8f9fa;
+}
+.container {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+.btn-primary, .btn-success {
+    border-radius: 25px;
+}
+#card-element {
+    padding: 10px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+}
+footer {
+    background: #343a40;
+    color: #fff;
+    padding: 15px;
+}

@@ -6,6 +6,8 @@
     <title>Payment Page</title>
     <!-- Bootstrap CSS -->
     <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <!-- Stripe.js -->
     <script src="https://js.stripe.com/v3/"></script>
     <!-- Link to external JavaScript file -->
@@ -17,44 +19,63 @@
     <div class="container my-5">
         <!-- Logo Section -->
         <div class="text-center">
-            <img src="{{ url_for('static', filename='images/opencart.png') }}" alt="OpenCart Logo" class="img-fluid mb-4" style="max-width: 200px;">
+            <img src="{{ url_for('static', filename='images/opencartlogo.jpeg') }}" alt="OpenCart Logo" class="img-fluid mb-4" style="max-width: 200px;">
         </div>
 
         <!-- Page Title -->
         <h1 class="text-center mb-4">Make a Payment</h1>
-        
+
         <!-- Login Section -->
         <div id="login-section" class="text-center mb-4">
             {% if session['user_email'] %}
                 <p>Welcome, <strong>{{ session['user_email'] }}</strong>!</p>
-                <a href="{{ url_for('logout') }}" class="btn btn-danger">Logout</a>
+                <a href="{{ url_for('logout') }}" class="btn btn-danger btn-sm">Logout</a>
             {% else %}
-                <a href="{{ url_for('login') }}" class="btn btn-primary">Login with Google</a>
+                <a href="{{ url_for('login') }}" class="btn btn-primary btn-sm"><i class="fab fa-google"></i> Login with Google</a>
             {% endif %}
         </div>
 
         <!-- Payment Form -->
         <form id="payment-form">
             <div class="form-group">
-                <label for="card-element">Credit or Debit Card</label>
-                <!-- Stripe Elements will create an input field for card details -->
-                <div id="card-element" class="form-control"></div>
+                <label for="name" class="font-weight-bold">Name</label>
+                <input type="text" id="name" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email" class="font-weight-bold">Email</label>
+                <input type="email" id="email" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="address" class="font-weight-bold">Address</label>
+                <input type="text" id="address" class="form-control" required>
+            </div>
+
+            <div class="form-group">
+                <label for="card-element" class="font-weight-bold">Credit or Debit Card</label>
+                <div id="card-element" aria-describedby="card-errors"></div>
                 <div id="card-errors" role="alert" class="text-danger mt-2"></div>
             </div>
-    
-            <button id="submit" type="submit" class="btn btn-success btn-block">Pay Now</button>
+
+            <button id="submit" type="submit" class="btn btn-success btn-block"><i class="fas fa-lock"></i> Pay Now</button>
+
+            <div id="loading-message" class="alert alert-info d-none"><i class="fas fa-spinner fa-spin"></i> Processing your payment...</div>
         </form>
-        
+
+        <!-- Payment Request Button -->
+        <div id="payment-request-button" style="display:none;"></div>
+
         <!-- Success and Error Messages -->
         <div id="messages" class="mt-4">
-            <div id="success-message" class="alert alert-success d-none">Payment successful!</div>
-            <div id="error-message" class="alert alert-danger d-none">There was an error processing your payment.</div>
+            <div id="success-message" class="alert alert-success d-none"><i class="fas fa-check-circle"></i> Payment successful!</div>
+            <div id="error-message" class="alert alert-danger d-none"><i class="fas fa-times-circle"></i> There was an error processing your payment.</div>
         </div>
     </div>
 
-    <!-- Footer (optional) -->
+    <!-- Footer -->
     <footer class="text-center mt-5">
-        <small>&copy; {{ current_year }} OpenCart. All rights reserved.</small>
+        <small>&copy; {{ current_year }}</small>
     </footer>
 </body>
 </html>

@@ -1,91 +1,197 @@
-const stripe = Stripe("pk_test_bljpr6qrPgJiftEYuLKIJuZh00domXNg3A");
-const elements = stripe.elements();
-const apiUrl = "/create-payment-intent"; // Set the correct API URL
+// Set your publishable key from Stripe
+const stripe = Stripe('pk_test_bljpr6qrPgJiftEYuLKIJuZh00domXNg3A'); // Replace with your actual Stripe publishable key
 
-// Create a card element
-const card = elements.create('card', {
-    hidePostalCode: true,
-    style: {
-        base: {
-            color: '#32325d',
-            fontFamily: 'Arial, sans-serif',
-            fontSize: '16px',
-            '::placeholder': {
-                color: '#aab7c4',
-            },
-        },
-        invalid: {
-            color: '#fa755a',
-            iconColor: '#fa755a',
-        },
-    },
-});
+// Set up elements for handling the payment form
+const elements = stripe.elements();
+
+// Create the card element
+const card = elements.create('card');
 card.mount('#card-element');
 
-// Handle form submission
-const form = document.getElementById('payment-form');
-form.addEventListener('submit', async (event) => {
-    event.preventDefault();
-
-    // Disable button to prevent multiple submissions
-    const submitButton = document.getElementById('submit');
-    submitButton.disabled = true;
-
-    // Clear previous messages
-    clearMessages();
-
-    try {
-        // Example dynamic cart data (you should replace this with real cart data)
-        const cartData = {
-            cart: {
-                store1: [
-                    { price: 500, quantity: 2 },
-                    { price: 300, quantity: 1 },
-                ],
-            },
-        };
-
-        // Fetch payment intent client secret
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(cartData),
-        });
-
-        const data = await response.json();
-        if (data.error) {
-            throw new Error(data.error);
-        }
-
-        // Confirm card payment
-        const { error } = await stripe.confirmCardPayment(data.client_secret, {
-            payment_method: { card },
-        });
-
-        if (error) {
-            throw new Error(error.message);
-        }
-
-        // Payment successful
-        showMessage('success', 'Payment successful!');
-    } catch (error) {
-        // Handle errors
-        showMessage('error', error.message);
-    } finally {
-        // Re-enable the button
-        submitButton.disabled = false;
+// Handle real-time validation errors from the card element
+card.on('change', (event) => {
+    const errorDisplay = document.getElementById('card-errors');
+    if (event.error) {
+        errorDisplay.textContent = event.error.message;
+    } else {
+        errorDisplay.textContent = '';
     }
 });
 
-// Show success or error messages
-function showMessage(type, message) {
-    const messageElement = type === 'success' ? document.getElementById('success-message') : document.getElementById('error-message');
-    messageElement.textContent = message;
-    messageElement.classList.remove('d-none');
+// Fetch cart items
+async function getCartItems() {
+    try {
+        const response = await fetch('/api/cart');
+        const cartItems = await response.json();
+        return cartItems.cart_items || [];
+    } catch (error) {
+        console.error('Error fetching cart items:', error);
+        return [];
+    }
 }
 
-// Clear previous messages
-function clearMessages() {
-    document.getElementById('success-message').classList.add('d-none');
-    document.getElementById('error-message').classList.add('d-none');
+// Show loading indicator
+function showLoading() {
+    document.getElementById('loading-message').classList.remove('d-none');
 }
+
+// Hide loading indicator
+function hideLoading() {
+    document.getElementById('loading-message').classList.add('d-none');
+}
+
+// Handle form submission
+async function handleFormSubmit(event) {
+    event.preventDefault();
+    showLoading();
+
+    // Retrieve cart items
+    const cartItems = await getCartItems();
+
+    // Create payment method with Stripe
+    const { error, paymentMethod } = await stripe.createPaymentMethod({
+        type: 'card',
+        card: card,
+        billing_details: {
+            name: document.getElementById('name').value,
+            email: document.getElementById('email').value,
+        },
+    });
+
+    if (error) {
+        hideLoading();
+        displayError(error.message);
+    } else {
+        // Send payment method and cart data to the server
+        try {
+            const response = await fetch('/pay', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    paymentMethodId: paymentMethod.id,
+                    cartItems: cartItems,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                hideLoading();
+                displayError(data.error);
+            } else {
+                // Confirm the payment intent on the client side
+                const result = await stripe.confirmPayment({
+                    clientSecret: data.clientSecret,
+                });
+
+                hideLoading();
+
+                if (result.error) {
+                    displayError(result.error.message);
+                } else {
+                    if (result.paymentIntent.status === 'succeeded') {
+                        displaySuccess('Payment successful!');
+                        window.location.href = '/payment-success';
+                    }
+                }
+            }
+        } catch (serverError) {
+            hideLoading();
+            displayError('There was an error processing your payment.');
+        }
+    }
+}
+
+// Display error message
+function displayError(message) {
+    const errorMessage = document.getElementById('error-message');
+    errorMessage.classList.remove('d-none');
+    errorMessage.textContent = message;
+}
+
+// Display success message
+function displaySuccess(message) {
+    const successMessage = document.getElementById('success-message');
+    successMessage.classList.remove('d-none');
+    successMessage.textContent = message;
+}
+
+// Attach event listener to the form
+const form = document.getElementById('payment-form');
+form.addEventListener('submit', handleFormSubmit);
+
+// PaymentRequest API setup
+const paymentRequest = stripe.paymentRequest({
+    country: 'US',
+    currency: 'usd',
+    total: {
+        label: 'Total Amount',
+        amount: 5000, // Default value: $50.00 in cents
+    },
+    requestPayerName: true,
+    requestPayerEmail: true,
+});
+
+const paymentRequestButton = elements.create('paymentRequestButton', {
+    paymentRequest: paymentRequest,
+});
+
+// Check if PaymentRequest is available
+paymentRequest.canMakePayment().then((result) => {
+    if (result) {
+        document.getElementById('payment-request-button').style.display = 'block';
+        paymentRequestButton.mount('#payment-request-button');
+    } else {
+        document.getElementById('payment-request-button').style.display = 'none';
+    }
+});
+
+// Handle PaymentRequest event
+paymentRequest.on('paymentmethod', async (ev) => {
+    showLoading();
+    try {
+        const cartItems = await getCartItems();
+
+        const response = await fetch('/pay', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                paymentMethodId: ev.paymentMethod.id,
+                cartItems: cartItems,
+            }),
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+            ev.complete('fail');
+            hideLoading();
+            alert(data.error);
+        } else {
+            const result = await stripe.confirmPayment({
+                clientSecret: data.clientSecret,
+                paymentMethod: ev.paymentMethod.id,
+            });
+
+            hideLoading();
+
+            if (result.error) {
+                ev.complete('fail');
+                alert(result.error.message);
+            } else {
+                ev.complete('success');
+                if (result.paymentIntent.status === 'succeeded') {
+                    window.location.href = '/payment-success';
+                }
+            }
+        }
+    } catch (error) {
+        ev.complete('fail');
+        hideLoading();
+        alert('There was an error processing your payment.');
+    }
+});
