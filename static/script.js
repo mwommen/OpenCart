@@ -19,6 +19,8 @@ card.on('change', (event) => {
 });
 
 
+
+
 // Fetch cart items
 async function getCartItems() {
     try {

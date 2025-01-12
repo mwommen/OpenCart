@@ -16,3 +16,7 @@ Commit Notes:
 Left off acessing google but I am unable to log in to my account successfully. I'm currently getting an error that my redirect URL does not match. 
 
 
+NOTES :
+
+UPS : Expires In: 14,399 seconds (about 4 hours), so you'll need to refresh the token periodically.
+

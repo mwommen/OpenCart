@@ -25,6 +25,17 @@
         <!-- Page Title -->
         <h1 class="text-center mb-4">Make a Payment</h1>
 
+        <div class="profile-section">
+            <!-- Profile Photo (Placeholder for now) -->
+            <div class="profile-photo">
+                <!-- You can add an image or styling here for the profile photo -->
+            </div>
+        
+            <!-- Profile Button to Navigate to Profile Page -->
+            <a href="{{ url_for('profile') }}" class="profile-button">Go to Profile</a>
+        </div>
+        
+
         <!-- Login Section -->
         <div id="login-section" class="text-center mb-4">
             {% if session['user_email'] %}
@@ -34,6 +45,52 @@
                 <a href="{{ url_for('login') }}" class="btn btn-primary btn-sm"><i class="fab fa-google"></i> Login with Google</a>
             {% endif %}
         </div>
+
+
+        <form id="tracking-form">
+            <input type="text" name="tracking_number" placeholder="Enter Tracking Number" required>
+            <button type="submit">Track Package</button>
+        </form>
+        
+        <div id="tracking-result" style="display: none;">
+            <!-- Tracking results will be displayed here -->
+        </div>
+        
+        <script>
+            document.getElementById('tracking-form').addEventListener('submit', async function (event) {
+                event.preventDefault();
+        
+                const formData = new FormData(event.target);
+                const trackingNumber = formData.get('tracking_number');
+        
+                try {
+                    const response = await fetch('/track_package', {
+                        method: 'POST',
+                        body: formData,
+                    });
+        
+                    const result = await response.json();
+        
+                    if (response.ok) {
+                        // Update the tracking-result container with tracking info
+                        const trackingResultDiv = document.getElementById('tracking-result');
+                        trackingResultDiv.style.display = 'block';
+                        trackingResultDiv.innerHTML = `
+                            <h3>Tracking Information</h3>
+                            <pre>${JSON.stringify(result.tracking_info, null, 2)}</pre>
+                        `;
+                    } else {
+                        alert(result.error || 'An error occurred while tracking the package.');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('An unexpected error occurred.');
+                }
+            });
+        </script>
+        
+        
+    
 
         <!-- Payment Form -->
         <form id="payment-form">
